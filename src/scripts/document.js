@@ -12,7 +12,6 @@ let timestamp = undefined;
 window.onload = function(){
   initDWT();
   initTesseract();
-  LoadProject();
 };
 
 function registerEvents() {
@@ -87,6 +86,7 @@ function initDWT(){
     DWObject.Viewer.width = "100%";
     DWObject.Viewer.height = "100%";
     registerEvents();
+    LoadProject();
   });
   
   Dynamsoft.DWT.ResourcesPath = "/dwt-resources";
@@ -229,7 +229,26 @@ function getAllImageIndex(){
 
 
 
-function LoadProject(){
-  let timestamp = getUrlParam("timestamp");
-  console.log(timestamp);
+async function LoadProject(){
+  const timestamp = getUrlParam("timestamp");
+  if (timestamp) {
+    const OCRData = await localForage.getItem(timestamp+"-OCR-Data");
+    if (OCRData) {
+      resultsDict = OCRData;
+    }
+    const PDF = await localForage.getItem(timestamp+"-PDF");
+    if (PDF) {
+      if (DWObject) {
+        DWObject.LoadImageFromBinary(
+          PDF,
+          function () {
+            console.log("success");
+          },
+          function (errorCode, errorString) {
+            console.log(errorString);
+          }
+        );
+      }
+    }
+  }
 }
