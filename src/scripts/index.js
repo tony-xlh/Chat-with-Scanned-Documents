@@ -19,6 +19,7 @@ function AddOneDocumentItem(timestamp,parent) {
   let listItem = document.createElement("li");
   let link = document.createElement("a");
   link.href = "document.html?timestamp="+timestamp;
+  link.target = "_blank";
   link.innerText = new Date(1684311982010).toLocaleString();
   listItem.appendChild(link);
   parent.appendChild(listItem);
