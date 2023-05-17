@@ -1,14 +1,18 @@
 import '../styles/index.scss';
 import Dynamsoft from "dwt";
 import { createWorker } from 'tesseract.js';
+import { getUrlParam } from './utils';
+import localForage from "localforage";
 
 let DWObject;
 let worker;
 let resultsDict = {};
+let timestamp = undefined;
 
 window.onload = function(){
   initDWT();
   initTesseract();
+  LoadProject();
 };
 
 function registerEvents() {
@@ -16,7 +20,7 @@ function registerEvents() {
     const selectedIds = bufferChangeInfo["selectedIds"];
     console.log(bufferChangeInfo);
     if (selectedIds.length === 1) {
-      showTextOfPage(selectedIds[0]);
+      showTextOfPage(DWObject.ImageIDToIndex(selectedIds[0]));
     }
   });
 
@@ -60,13 +64,16 @@ function registerEvents() {
   document.getElementsByClassName("download-text-btn")[0].addEventListener("click",function(){
     DownloadText();
   });
+
+  document.getElementsByClassName("save-btn")[0].addEventListener("click",function(){
+    SaveDocument();
+  });
 }
 
-function showTextOfPage(ImageID){
-  console.log(ImageID);
-  if (resultsDict[ImageID]) {
+function showTextOfPage(index){
+  if (resultsDict[index]) {
     console.log(resultsDict);
-    const text = resultsDict[ImageID].data.text;
+    const text = resultsDict[index].data.text;
     document.getElementsByClassName("text")[0].innerText = text;
   }else{
     document.getElementsByClassName("text")[0].innerText = "";
@@ -107,9 +114,8 @@ async function OCRSelected(){
   if (DWObject && worker) {
     const index = DWObject.CurrentImageIndexInBuffer;
     const skipProcessed = document.getElementById("skip-processed-chk").checked;
-    const ImageID = DWObject.IndexToImageID(index);
     if (skipProcessed) {
-      if (resultsDict[ImageID]) {
+      if (resultsDict[index]) {
         console.log("Processed");
         return;
       }
@@ -117,9 +123,9 @@ async function OCRSelected(){
     const status = document.getElementById("status");
     status.innerText = "Recognizing...";
     const data = await OCROneImage(index);
-    resultsDict[ImageID] = data;
+    resultsDict[index] = data;
     status.innerText = "Done";
-    showTextOfPage(ImageID);
+    showTextOfPage(index);
   }
 }
 
@@ -128,16 +134,15 @@ async function BatchOCR(){
     const skipProcessed = document.getElementById("skip-processed-chk").checked;
     const status = document.getElementById("status");
     for (let index = 0; index < DWObject.HowManyImagesInBuffer; index++) {
-      const ImageID = DWObject.IndexToImageID(index);
       if (skipProcessed) {
-        if (resultsDict[ImageID]) {
+        if (resultsDict[index]) {
           console.log("Processed");
           continue;
         }
       }
       status.innerText = "Recognizing page "+(index+1)+"...";
       const data = await OCROneImage(index);
-      resultsDict[ImageID] = data;
+      resultsDict[index] = data;
     }
     status.innerText = "Done";
   }
@@ -164,9 +169,8 @@ function DownloadText(){
   if (DWObject) {
     let text = "";
     for (let index = 0; index < DWObject.HowManyImagesInBuffer; index++) {
-      const ImageID = DWObject.IndexToImageID(index);
-      if (resultsDict[ImageID]) {
-        text = text + resultsDict[ImageID].data.text;
+      if (resultsDict[index]) {
+        text = text + resultsDict[index].data.text;
       }
       text = text + "\n\n=== "+ "Page "+ (index+1) +" ===\n\n";
     }
@@ -180,4 +184,52 @@ function DownloadText(){
     link.click();
     document.body.removeChild(link);
   }
+}
+
+async function SaveDocument() {
+  console.log(localForage);
+  if (!timestamp) {
+    timestamp = Date.now();
+  }
+  await SaveOCRResults(timestamp);
+  await SavePages(timestamp);
+  alert("Saved");
+}
+
+async function SaveOCRResults(timestamp){
+  await localForage.setItem(timestamp+"-OCR-Data",resultsDict);
+}
+
+function SavePages(timestamp){
+  return new Promise(function (resolve, reject) {
+    if (DWObject) {
+      const success = async (result) => {
+        await localForage.setItem(timestamp+"-PDF",result);
+        resolve();
+      };
+      const failure = (errorCode, errorString) => {
+        reject(errorString);
+      };
+      DWObject.ConvertToBlob(getAllImageIndex(),Dynamsoft.DWT.EnumDWT_ImageType.IT_PDF, success, failure);
+    }else{
+      reject();
+    }
+  });
+}
+
+function getAllImageIndex(){
+  let indices = [];
+  if (DWObject) {
+    for (let index = 0; index < DWObject.HowManyImagesInBuffer; index++) {
+      indices.push(index);
+    }
+  }
+  return indices;
+}
+
+
+
+function LoadProject(){
+  let timestamp = getUrlParam("timestamp");
+  console.log(timestamp);
 }
