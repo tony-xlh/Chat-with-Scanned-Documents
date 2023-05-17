@@ -1,4 +1,3 @@
-import '../styles/index.scss';
 import Dynamsoft from "dwt";
 import { createWorker } from 'tesseract.js';
 import { getUrlParam } from './utils';
