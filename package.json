@@ -61,6 +61,7 @@
     "@babel/polyfill": "^7.12.1",
     "core-js": "^3.30.2",
     "dwt": "^18.2.0",
+    "localforage": "^1.10.0",
     "tesseract.js": "^4.0.5"
   }
 }
