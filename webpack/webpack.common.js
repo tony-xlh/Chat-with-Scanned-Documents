@@ -5,7 +5,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: {
-    app: Path.resolve(__dirname, '../src/scripts/index.js'),
+    index: Path.resolve(__dirname, '../src/scripts/index.js'),
+    document: Path.resolve(__dirname, '../src/scripts/document.js')
   },
   output: {
     path: Path.join(__dirname, '../build'),
@@ -13,9 +14,24 @@ module.exports = {
   },
   optimization: {
     splitChunks: {
-      chunks: 'all',
-      name: false,
+      cacheGroups: {
+        common: {
+          name: "common",
+          chunks: "initial",
+          minSize: 1,
+          priority: 0,
+          minChunks: 2, 
+        },
+        vendor: {
+          name: "vendor",
+          test: /[\\/]node_modules[\\/]/,
+          chunks: "initial",
+          priority: 10,
+          minChunks: 2,
+        }
+      }
     },
+    runtimeChunk: { name: 'manifest' }
   },
   plugins: [
     new CleanWebpackPlugin(),
@@ -24,6 +40,13 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       template: Path.resolve(__dirname, '../src/index.html'),
+      filename: "index.html",
+      chunks: ['index'],
+    }),
+    new HtmlWebpackPlugin({
+      template: Path.resolve(__dirname, '../src/document.html'),
+      filename: "document.html",
+      chunks: ['document'],
     }),
   ],
   resolve: {
