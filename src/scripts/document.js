@@ -7,6 +7,8 @@ import { OpenAI } from "langchain/llms/openai";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { ChatOpenAI } from "langchain/chat_models/openai";
+import { HumanChatMessage } from "langchain/schema";
 
 let DWObject;
 let worker;
@@ -78,6 +80,10 @@ function registerEvents() {
     ShowChatModal();
   });
 
+  document.getElementById("question").addEventListener("keydown",function(){
+    Query();
+  });
+  
   document.getElementsByClassName("close-btn")[0].addEventListener("click",function(){
     HideChatModal();
   });
@@ -85,7 +91,7 @@ function registerEvents() {
 
   document.getElementsByClassName("rebuild-btn")[0].addEventListener("click",async function(){
     document.getElementsByClassName("rebuild-btn")[0].innerText = "Building...";
-    await CreateVectorStore();
+    await CreateVectorStore(getJoinedText());
     document.getElementsByClassName("rebuild-btn")[0].innerText = "Rebuild VectorStore";
   });
 
@@ -323,30 +329,42 @@ function ShowInputModal(){
 async function Query(){
   const question = document.getElementById("question").value;
   if (question) {
+    let answer = "";
     const chatWindow = document.getElementsByClassName("chat-window")[0];
     appendDialog("Q: "+question);
     appendDialog("Please wait...");
     chatWindow.scrollTo(0,chatWindow.clientHeight);
 
     document.getElementById("question").value = "";
-    
-    if (!store) {
-      await CreateVectorStore();
+    const text = getJoinedText();
+    if (text) {
+      if (!store) {
+        await CreateVectorStore(text);
+      }
+      const model = new OpenAI({openAIApiKey: apikey, temperature: 0 });
+
+      const chain = loadQARefineChain(model);
+      // Select the relevant documents
+      const relevantDocs = await store.similaritySearch(question);
+  
+      // Call the chain
+      const res = await chain.call({
+        input_documents: relevantDocs,
+        question,
+      });
+      answer = res.output_text;
+    }else{
+      const chat = new ChatOpenAI({ openAIApiKey: apikey, temperature: 0 });
+      const response = await chat.call([
+        new HumanChatMessage(
+          question
+        ),
+      ]);
+      answer = response.text;
     }
-    const model = new OpenAI({openAIApiKey: apikey, temperature: 0 });
-    const chain = loadQARefineChain(model);
-    // Select the relevant documents
-    const relevantDocs = await store.similaritySearch(question);
-
-    // Call the chain
-    const res = await chain.call({
-      input_documents: relevantDocs,
-      question,
-    });
-
     
     chatWindow.removeChild(chatWindow.childNodes[chatWindow.childNodes.length - 1]);
-    appendDialog("A: "+res.output_text);
+    appendDialog("A: "+answer);
     chatWindow.scrollTo(0,chatWindow.clientHeight);
   }
 }
@@ -362,12 +380,10 @@ function appendDialog(text){
   chatWindow.appendChild(questionContainer);
 }
 
-async function CreateVectorStore(){
+async function CreateVectorStore(text){
   // Create the models and chain
   const embeddings = new OpenAIEmbeddings({openAIApiKey: apikey});
   // Load the documents and create the vector store
-  const text = getJoinedText();
-  console.log(text);
   const splitter = new RecursiveCharacterTextSplitter({
     chunkSize: 4000,
     chunkOverlap: 200,
