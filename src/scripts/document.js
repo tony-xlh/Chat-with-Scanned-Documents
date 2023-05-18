@@ -80,8 +80,10 @@ function registerEvents() {
     ShowChatModal();
   });
 
-  document.getElementById("question").addEventListener("keydown",function(){
-    Query();
+  document.getElementById("question").addEventListener("keydown",function(event){
+    if (event.code === "Enter") {
+      Query();
+    }
   });
   
   document.getElementsByClassName("close-btn")[0].addEventListener("click",function(){
