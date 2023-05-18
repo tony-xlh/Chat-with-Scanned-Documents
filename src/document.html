@@ -39,6 +39,26 @@
       visibility: inherit;
     }
 
+    .input-modal {
+      display: flex;
+      align-items: center;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 150px;
+      border: 1px solid gray;
+      border-radius: 5px;
+      background: white;
+      z-index: 9999;
+      visibility: hidden;
+    }
+
+    .input-modal.active {
+      visibility: inherit;
+    }
+
     .chat-window {
       height: calc(100% - 40px);
       overflow: auto;
@@ -89,6 +109,8 @@
     </div>
   </div>
   <button class="save-btn">Save to IndexedDB</button>
+  <button class="rebuild-btn">Rebuild VectorStore</button>
+  <button class="set-apikey-btn">Set APIKey</button>
   <div>
     <button class="chat-btn">Start Chat</button>
   </div>
@@ -97,6 +119,13 @@
     <div class="chat-input">
       <input style="margin-left:10px;height:100%;width:calc(100% - 110px);" type="text" id="question"/>
       <button class="query-btn"  style="height:100%;width:80px;">Query</button>
+    </div>
+  </div>
+  <div class="input-modal">
+    <div style="padding:10px;">
+      Please input your OpenAI's key:
+      <input type="text" id="apikey"/>
+      <button class="save-apikey-btn">Save</button>
     </div>
   </div>
 </body>

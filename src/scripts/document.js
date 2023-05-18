@@ -2,11 +2,18 @@ import Dynamsoft from "dwt";
 import { createWorker } from 'tesseract.js';
 import { getUrlParam } from './utils';
 import localForage from "localforage";
+import { loadQARefineChain } from "langchain/chains";
+import { OpenAI } from "langchain/llms/openai";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 
 let DWObject;
 let worker;
 let resultsDict = {};
 let timestamp = undefined;
+let store = undefined;
+let apikey = "";
 
 window.onload = function(){
   initDWT();
@@ -69,6 +76,20 @@ function registerEvents() {
 
   document.getElementsByClassName("chat-btn")[0].addEventListener("click",function(){
     ShowChatModal();
+  });
+
+  document.getElementsByClassName("rebuild-btn")[0].addEventListener("click",async function(){
+    document.getElementsByClassName("rebuild-btn")[0].innerText = "Building...";
+    await CreateVectorStore();
+    document.getElementsByClassName("rebuild-btn")[0].innerText = "Rebuild VectorStore";
+  });
+
+  document.getElementsByClassName("set-apikey-btn")[0].addEventListener("click",function(){
+    ShowInputModal();
+  });
+
+  document.getElementsByClassName("save-apikey-btn")[0].addEventListener("click",function(){
+    SaveAPIKey();
   });
 
   document.getElementsByClassName("query-btn")[0].addEventListener("click",function(){
@@ -173,33 +194,39 @@ async function OCROneImage(index){
 }
 
 function DownloadText(){
+  let text = getJoinedText();
+  let filename = 'text.txt';
+  let link = document.createElement('a');
+  link.style.display = 'none';
+  link.setAttribute('target', '_blank');
+  link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function getJoinedText(){
+  let text = "";
   if (DWObject) {
-    let text = "";
     for (let index = 0; index < DWObject.HowManyImagesInBuffer; index++) {
       if (resultsDict[index]) {
         text = text + resultsDict[index].data.text;
       }
       text = text + "\n\n=== "+ "Page "+ (index+1) +" ===\n\n";
     }
-    let filename = 'text.txt';
-    let link = document.createElement('a');
-    link.style.display = 'none';
-    link.setAttribute('target', '_blank');
-    link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
+  return text;
 }
 
 async function SaveDocument() {
-  console.log(localForage);
+  document.getElementsByClassName("save-btn")[0].innerText = "Saving...";
   if (!timestamp) {
     timestamp = Date.now();
   }
   await SaveOCRResults(timestamp);
   await SavePages(timestamp);
+  document.getElementsByClassName("save-btn")[0].innerText = "Save to IndexedDB";
   alert("Saved");
 }
 
@@ -224,6 +251,12 @@ function SavePages(timestamp){
   });
 }
 
+async function SaveAPIKey(){
+  apikey = document.getElementById("apikey").value;
+  await localForage.setItem("apikey",apikey);
+  document.getElementsByClassName("input-modal")[0].classList.remove("active");
+}
+
 function getAllImageIndex(){
   let indices = [];
   if (DWObject) {
@@ -237,8 +270,10 @@ function getAllImageIndex(){
 
 
 async function LoadProject(){
-  const timestamp = getUrlParam("timestamp");
+  timestamp = getUrlParam("timestamp");
   if (timestamp) {
+    apikey = await localForage.getItem("apikey");
+    document.getElementById("apikey").value = apikey;
     const OCRData = await localForage.getItem(timestamp+"-OCR-Data");
     if (OCRData) {
       resultsDict = OCRData;
@@ -260,21 +295,68 @@ async function LoadProject(){
   }
 }
 
-function ShowChatModal(){
+async function ShowChatModal(){
   document.getElementsByClassName("modal")[0].classList.add("active");
+  const key = await localForage.getItem("apikey");
+  if (!key) {
+    ShowInputModal();
+  }
 }
 
-function Query(){
+function ShowInputModal(){
+  document.getElementsByClassName("input-modal")[0].classList.add("active");
+}
+
+async function Query(){
   const question = document.getElementById("question").value;
   if (question) {
-    const chatWindow = document.getElementsByClassName("chat-window")[0];
-    const questionContainer = document.createElement("div");
-    questionContainer.className = "question";
-    const dialogContainer = document.createElement("div");
-    dialogContainer.className = "dialog";
-    questionContainer.appendChild(dialogContainer);
-    dialogContainer.innerText = "Q: "+question;
-    chatWindow.appendChild(questionContainer);
+    appendDialog("Q: "+question);
     document.getElementById("question").value = "";
+    
+    if (!store) {
+      await CreateVectorStore();
+    }
+    const model = new OpenAI({openAIApiKey: apikey, temperature: 0 });
+    const chain = loadQARefineChain(model);
+    // Select the relevant documents
+    const relevantDocs = await store.similaritySearch(question);
+
+    // Call the chain
+    const res = await chain.call({
+      input_documents: relevantDocs,
+      question,
+    });
+
+    console.log(res);
+    appendDialog("A: "+res.output_text);
   }
+}
+
+function appendDialog(text){
+  const chatWindow = document.getElementsByClassName("chat-window")[0];
+  const questionContainer = document.createElement("div");
+  questionContainer.className = "question";
+  const dialogContainer = document.createElement("div");
+  dialogContainer.className = "dialog";
+  questionContainer.appendChild(dialogContainer);
+  dialogContainer.innerText = text;
+  chatWindow.appendChild(questionContainer);
+}
+
+async function CreateVectorStore(){
+  // Create the models and chain
+  const embeddings = new OpenAIEmbeddings({openAIApiKey: apikey});
+  // Load the documents and create the vector store
+  const text = getJoinedText();
+  console.log(text);
+  const splitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 4000,
+    chunkOverlap: 200,
+  });
+  const docs = await splitter.createDocuments([text]);
+  console.log(splitter);
+  console.log(docs);
+  store = await MemoryVectorStore.fromDocuments(docs, embeddings);
+  console.log(store);
+  return store;
 }
