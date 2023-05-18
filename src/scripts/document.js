@@ -310,8 +310,11 @@ function ShowInputModal(){
 async function Query(){
   const question = document.getElementById("question").value;
   if (question) {
+    const chatWindow = document.getElementsByClassName("chat-window")[0];
     appendDialog("Q: "+question);
     appendDialog("Please wait...");
+    chatWindow.scrollTo(0,chatWindow.clientHeight);
+    
     document.getElementById("question").value = "";
     
     if (!store) {
@@ -328,9 +331,10 @@ async function Query(){
       question,
     });
 
-    const chatWindow = document.getElementsByClassName("chat-window")[0];
+    
     chatWindow.removeChild(chatWindow.childNodes[chatWindow.childNodes.length - 1]);
     appendDialog("A: "+res.output_text);
+    chatWindow.scrollTo(0,chatWindow.clientHeight);
   }
 }
 
