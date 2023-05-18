@@ -21,6 +21,47 @@
     #status {
       margin-left: 1em;
     }
+
+    .modal {
+      position:fixed;
+      left: 20px;
+      top: 20px;
+      width: calc(100% - 40px);
+      height: calc(100% - 40px);
+      border: 1px solid gray;
+      border-radius: 5px;
+      background: white;
+      z-index: 9998;
+      visibility: hidden;
+    }
+
+    .modal.active {
+      visibility: inherit;
+    }
+
+    .chat-window {
+      height: calc(100% - 40px);
+      overflow: auto;
+    }
+
+    .question {
+      display: flex;
+    }
+
+    .answer {
+      display: flex;
+    }
+
+    .dialog {
+      padding: 10px;
+      margin: 10px;
+      border: 1px solid gray;
+      border-radius: 5px;
+    }
+
+    .chat-input {
+      height: 30px;
+    }
   </style>
 </head>
 <body>
@@ -49,7 +90,14 @@
   </div>
   <button class="save-btn">Save to IndexedDB</button>
   <div>
-    <button>Start Chatting</button>
+    <button class="chat-btn">Start Chat</button>
+  </div>
+  <div class="modal">
+    <div class="chat-window"></div>
+    <div class="chat-input">
+      <input style="margin-left:10px;height:100%;width:calc(100% - 110px);" type="text" id="question"/>
+      <button class="query-btn"  style="height:100%;width:80px;">Query</button>
+    </div>
   </div>
 </body>
 </html>

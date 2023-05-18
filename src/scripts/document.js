@@ -66,6 +66,14 @@ function registerEvents() {
   document.getElementsByClassName("save-btn")[0].addEventListener("click",function(){
     SaveDocument();
   });
+
+  document.getElementsByClassName("chat-btn")[0].addEventListener("click",function(){
+    ShowChatModal();
+  });
+
+  document.getElementsByClassName("query-btn")[0].addEventListener("click",function(){
+    Query();
+  });
 }
 
 function showTextOfPage(index){
@@ -249,5 +257,24 @@ async function LoadProject(){
         );
       }
     }
+  }
+}
+
+function ShowChatModal(){
+  document.getElementsByClassName("modal")[0].classList.add("active");
+}
+
+function Query(){
+  const question = document.getElementById("question").value;
+  if (question) {
+    const chatWindow = document.getElementsByClassName("chat-window")[0];
+    const questionContainer = document.createElement("div");
+    questionContainer.className = "question";
+    const dialogContainer = document.createElement("div");
+    dialogContainer.className = "dialog";
+    questionContainer.appendChild(dialogContainer);
+    dialogContainer.innerText = "Q: "+question;
+    chatWindow.appendChild(questionContainer);
+    document.getElementById("question").value = "";
   }
 }
