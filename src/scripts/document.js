@@ -311,6 +311,7 @@ async function Query(){
   const question = document.getElementById("question").value;
   if (question) {
     appendDialog("Q: "+question);
+    appendDialog("Please wait...");
     document.getElementById("question").value = "";
     
     if (!store) {
@@ -327,7 +328,8 @@ async function Query(){
       question,
     });
 
-    console.log(res);
+    const chatWindow = document.getElementsByClassName("chat-window")[0];
+    chatWindow.removeChild(chatWindow.childNodes[chatWindow.childNodes.length - 1]);
     appendDialog("A: "+res.output_text);
   }
 }
