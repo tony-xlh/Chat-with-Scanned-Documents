@@ -76,6 +76,10 @@ function registerEvents() {
     SaveDocument();
   });
 
+  document.getElementsByClassName("save-pdf-btn")[0].addEventListener("click",function(){
+    SaveAsPDF();
+  });
+
   document.getElementsByClassName("chat-btn")[0].addEventListener("click",function(){
     ShowChatModal();
   });
@@ -268,6 +272,21 @@ function SavePages(timestamp){
       reject();
     }
   });
+}
+
+function SaveAsPDF(){
+  if (DWObject) {
+    DWObject.SaveAllAsPDF(
+      "Scanned",
+      function() {
+        console.log("saved");
+      },
+      function() {
+        console.log("failed");
+      }
+    );
+  }
+  
 }
 
 async function SaveAPIKey(){
