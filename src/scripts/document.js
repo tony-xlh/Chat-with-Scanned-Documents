@@ -120,6 +120,7 @@ function initDWT(){
     DWObject.Viewer.height = "100%";
     registerEvents();
     LoadProject();
+    LoadAPIKey();
   });
   
   Dynamsoft.DWT.ResourcesPath = "/dwt-resources";
@@ -141,6 +142,11 @@ async function initTesseract(){
   status.innerText = "Initializing...";
   await worker.initialize('eng');
   status.innerText = "Ready";
+}
+
+async function LoadAPIKey() {
+  apikey = await localForage.getItem("apikey");
+  document.getElementById("apikey").value = apikey;
 }
 
 async function OCRSelected(){
@@ -277,8 +283,6 @@ function getAllImageIndex(){
 async function LoadProject(){
   timestamp = getUrlParam("timestamp");
   if (timestamp) {
-    apikey = await localForage.getItem("apikey");
-    document.getElementById("apikey").value = apikey;
     const OCRData = await localForage.getItem(timestamp+"-OCR-Data");
     if (OCRData) {
       resultsDict = OCRData;
