@@ -5,6 +5,8 @@ A demo of using Tesseract.js to extract text of documents scanned with [Dynamic 
 
 If the SDK expires, you need to apply for your license [here](https://www.dynamsoft.com/customer/license/trialLicense?product=dwt).
 
+[Online demo](https://singular-chimera-686bc8.netlify.app/)
+
 ### Installation
 
 ```sh
