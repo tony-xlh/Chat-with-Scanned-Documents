@@ -78,6 +78,11 @@ function registerEvents() {
     ShowChatModal();
   });
 
+  document.getElementsByClassName("close-btn")[0].addEventListener("click",function(){
+    HideChatModal();
+  });
+  
+
   document.getElementsByClassName("rebuild-btn")[0].addEventListener("click",async function(){
     document.getElementsByClassName("rebuild-btn")[0].innerText = "Building...";
     await CreateVectorStore();
@@ -303,6 +308,10 @@ async function ShowChatModal(){
   }
 }
 
+async function HideChatModal(){
+  document.getElementsByClassName("modal")[0].classList.remove("active");
+}
+
 function ShowInputModal(){
   document.getElementsByClassName("input-modal")[0].classList.add("active");
 }
@@ -314,7 +323,7 @@ async function Query(){
     appendDialog("Q: "+question);
     appendDialog("Please wait...");
     chatWindow.scrollTo(0,chatWindow.clientHeight);
-    
+
     document.getElementById("question").value = "";
     
     if (!store) {

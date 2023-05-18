@@ -64,6 +64,12 @@
       overflow: auto;
     }
 
+    .close-btn {
+      position: absolute;
+      right: 10px;
+      top: 10px; 
+    }
+
     .question {
       display: flex;
     }
@@ -115,6 +121,7 @@
     <button class="chat-btn">Start Chat</button>
   </div>
   <div class="modal">
+    <button class="close-btn">X</button>
     <div class="chat-window"></div>
     <div class="chat-input">
       <input style="margin-left:10px;height:100%;width:calc(100% - 110px);" type="text" id="question"/>
