@@ -335,7 +335,7 @@ async function Query(){
     const chatWindow = document.getElementsByClassName("chat-window")[0];
     appendDialog("Q: "+question);
     appendDialog("Please wait...");
-    chatWindow.scrollTo(0,chatWindow.clientHeight);
+    chatWindow.scrollTo(0,chatWindow.scrollHeight);
 
     document.getElementById("question").value = "";
     const text = getJoinedText();
@@ -367,7 +367,7 @@ async function Query(){
     
     chatWindow.removeChild(chatWindow.childNodes[chatWindow.childNodes.length - 1]);
     appendDialog("A: "+answer);
-    chatWindow.scrollTo(0,chatWindow.clientHeight);
+    chatWindow.scrollTo(0,chatWindow.scrollHeight);
   }
 }
 
