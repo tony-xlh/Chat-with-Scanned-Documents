@@ -31,16 +31,10 @@ function registerEvents() {
     }
   });
 
-  document.getElementsByClassName("scan-btn")[0].addEventListener("click",function(){
+  document.getElementsByClassName("scan-btn")[0].addEventListener("click",async function(){
     if (DWObject) {
-      DWObject.SelectSource(function () {
-        DWObject.OpenSource();
-        DWObject.AcquireImage();
-      },
-        function () {
-          console.log("SelectSource failed!");
-        }
-      );
+      await DWObject.SelectSourceAsync();
+      DWObject.AcquireImageAsync();
     }
   });
   document.getElementsByClassName("load-btn")[0].addEventListener("click",function(){
