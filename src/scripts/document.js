@@ -2,7 +2,7 @@ import Dynamsoft from "dwt";
 import { createWorker } from 'tesseract.js';
 import { getUrlParam } from './utils';
 import localForage from "localforage";
-import { loadQARefineChain } from "langchain/chains";
+import { ConversationalRetrievalQAChain } from "langchain/chains";
 import { OpenAI } from "langchain/llms/openai";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
@@ -16,6 +16,24 @@ let resultsDict = {};
 let timestamp = undefined;
 let store = undefined;
 let apikey = "";
+
+const QA_PROMPT = `You are a helpful AI assistant. Use the following pieces of context to answer the question at the end.
+If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
+If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
+Respond only in the same language of the question.
+
+Context: {context}
+
+Question: {question}
+Helpful answer in markdown:`;
+
+const CONDENSE_PROMPT = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+The rephrased question should be in the original language of the question.
+
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Standalone question:`;
 
 window.onload = function(){
   initDWT();
@@ -78,9 +96,9 @@ function registerEvents() {
     ShowChatModal();
   });
 
-  document.getElementById("question").addEventListener("keydown",function(event){
+  document.getElementById("question").addEventListener("keydown",async function(event){
     if (event.code === "Enter") {
-      Query();
+      await Query();
     }
   });
   
@@ -103,8 +121,8 @@ function registerEvents() {
     SaveAPIKey();
   });
 
-  document.getElementsByClassName("query-btn")[0].addEventListener("click",function(){
-    Query();
+  document.getElementsByClassName("query-btn")[0].addEventListener("click",async function(){
+    await Query();
   });
 }
 
@@ -342,10 +360,17 @@ function ShowInputModal(){
 }
 
 async function Query(){
+  console.log('query');
   const question = document.getElementById("question").value;
   if (question) {
-    let answer = "";
+    let history = [];
+
     const chatWindow = document.getElementsByClassName("chat-window")[0];
+    // get divs with className question in chatWindow and set history array
+    history = getChatHistory(chatWindow);
+
+
+    let answer = "";
     appendDialog("Q: "+question);
     appendDialog("Please wait...");
     chatWindow.scrollTo(0,chatWindow.scrollHeight);
@@ -356,20 +381,34 @@ async function Query(){
       if (!store) {
         await CreateVectorStore(text);
       }
-      const model = new OpenAI({openAIApiKey: apikey, temperature: 0 });
-
-      const chain = loadQARefineChain(model);
-      // Select the relevant documents
-      const relevantDocs = await store.similaritySearch(question);
-  
-      // Call the chain
-      const res = await chain.call({
-        input_documents: relevantDocs,
-        question,
+      const model = new OpenAI({
+        openAIApiKey: apikey, 
+        temperature: 0, // increase temepreature to get more creative answers
+        modelName: 'gpt-3.5-turbo', //change this to gpt-4 if you have access
       });
-      answer = res.output_text;
+
+      const chain = ConversationalRetrievalQAChain.fromLLM(
+        model, store.asRetriever(), {
+          qaTemplate: QA_PROMPT,
+          questionGeneratorTemplate: CONDENSE_PROMPT,
+          returnSourceDocuments: true
+        }
+      );
+  
+      console.log('call to chain 1');
+        // OpenAI recommends replacing newlines with spaces for best results
+      const sanitizedQuestion = question.trim().replaceAll('\n', ' ');
+
+      //Ask a question using chat history
+      const res = await chain.call({
+        question: sanitizedQuestion,
+        chat_history: history || [], 
+      });
+
+      answer = res.text;
     }else{
       const chat = new ChatOpenAI({ openAIApiKey: apikey, temperature: 0 });
+      console.log('call to chain 2');
       const response = await chat.call([
         new HumanChatMessage(
           question
@@ -378,10 +417,22 @@ async function Query(){
       answer = response.text;
     }
     
+    console.log('append response');
     chatWindow.removeChild(chatWindow.childNodes[chatWindow.childNodes.length - 1]);
     appendDialog("A: "+answer);
     chatWindow.scrollTo(0,chatWindow.scrollHeight);
   }
+}
+
+function getChatHistory(chatWindow) {
+  let history = [];
+  const questions = chatWindow.getElementsByClassName("question");
+  for (let index = 0; index < questions.length; index++) {
+    const element = questions[index];
+    // add to innerText to histoty
+    history.push(element.innerText);
+  }
+  return history;
 }
 
 function appendDialog(text){
